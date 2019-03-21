@@ -1,5 +1,10 @@
 package com.linkedin.fullapplinkedinrxjava.cmd;
 
+import akka.actor.ActorRef;
+import akka.actor.ActorSystem;
+import com.linkedin.fullapplinkedinrxjava.actor.Poller;
+import com.linkedin.fullapplinkedinrxjava.actor.PriceRequestor;
+import com.linkedin.fullapplinkedinrxjava.actor.Printer;
 import com.linkedin.fullapplinkedinrxjava.model.CoinBaseResponse;
 import com.linkedin.fullapplinkedinrxjava.observer.ConsolePrintObserver;
 import com.linkedin.fullapplinkedinrxjava.service.CoinBaseService;
@@ -18,20 +23,16 @@ public class CmdLineUi implements CommandLineRunner {
     private CoinBaseService coinBaseService;
     @Override
     public void run(String... args) throws Exception {
+        final ActorSystem system = ActorSystem.create("helloAkka");
 
-        System.out.println("\n" + "Linkedin Learning Reactive Programming With Java 8" + "\n");
+        System.out.println("\n" + "Linkedin Learning Reactive Programming With Java 8 Using Akka" + "\n");
 
-        Observable
-                .interval(3000, TimeUnit.MILLISECONDS, Schedulers.io())
-                .map(tickLong -> coinBaseService.getCryptoPrice("BTC-USD"))
-                .subscribe(new ConsolePrintObserver());
+        final ActorRef printer = system.actorOf(Printer.props(), "printerActor");
 
-        Observable
-                .interval(3000, TimeUnit.MILLISECONDS, Schedulers.io())
-                .map(tickLong -> coinBaseService.getCryptoPrice("ETH-USD"))
-                .subscribe(new ConsolePrintObserver());
+        final ActorRef priceRequestor = system.actorOf(PriceRequestor.props(printer, coinBaseService), "priceRequestor");
 
-//        coinBaseService.getCryptoPrice("BTC-USD")
-//                .subscribe(coinBaseResponse ->  System.out.println(coinBaseResponse.getData().getAmount()));
+        final ActorRef poller = system.actorOf(Poller.props("BTC-USD", priceRequestor), "poller");
+
+
     }
 }
